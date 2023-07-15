@@ -10,14 +10,14 @@ import android.net.Uri
 import android.os.Bundle
 import android.provider.Settings
 import android.widget.TextView
-import android.widget.Toast
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.viewModels
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.lifecycle.Observer
-import androidx.lifecycle.ViewModelProvider
+
 
 
 class MainActivity : AppCompatActivity() {
@@ -29,7 +29,8 @@ class MainActivity : AppCompatActivity() {
     lateinit var gpsDialog: AlertDialog
     var gpsDialogBuilder:AlertDialog.Builder?=null
 
-    var viewModel: MainViewModel?=null
+    val viewModel: MainViewModel by viewModels()
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
@@ -38,39 +39,49 @@ class MainActivity : AppCompatActivity() {
         gpsStateDialog()
         checkBluetoothEnabled()
         checkGpsEnabled()
-        viewModel = ViewModelProvider.AndroidViewModelFactory(application).create(MainViewModel::class.java)
         viewModel?.strViewModel?.observe(this,Observer {
             if (it){
-                try {
-                    if (!permissionDialog.isShowing)
-                        permissionDialog.show()
-                } catch (e: Exception) {
-                    e.printStackTrace()
-                }
+                showPermissionDialog()
             }else{
                 permissionDialog.dismiss()
             }
         })
+        requestPermissions()
+        findViewById<TextView?>(R.id.textView).setOnClickListener {
+        permissionSettingsDialog()
+        }
+    }
 
-         permissionLauncher = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { permissions ->
+    private fun requestPermissions() {
+        permissionLauncher =
+            registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { permissions ->
             if (permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true &&
                 permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true &&
                 permissions[Manifest.permission.BLUETOOTH_SCAN] == true &&
-                permissions[Manifest.permission.BLUETOOTH_CONNECT] == true){
+                    permissions[Manifest.permission.BLUETOOTH_CONNECT] == true
+                ) {
                 viewModel?.strViewModel?.value = false
             } else {
                 permissionDialog.dismiss()
                 viewModel?.strViewModel?.value = true
             }
         }
-        permissionLauncher.launch(arrayOf(
+        permissionLauncher.launch(
+            arrayOf(
             Manifest.permission.BLUETOOTH_SCAN,
             Manifest.permission.BLUETOOTH_CONNECT,
             Manifest.permission.ACCESS_COARSE_LOCATION,
             Manifest.permission.ACCESS_FINE_LOCATION,
-        ))
-        findViewById<TextView?>(R.id.textView).setOnClickListener {
-        permissionSettingsDialog()
+            )
+        )
+    }
+
+    private fun showPermissionDialog() {
+        try {
+            if (!permissionDialog.isShowing)
+                permissionDialog.show()
+        } catch (e: Exception) {
+            e.printStackTrace()
         }
     }
 
